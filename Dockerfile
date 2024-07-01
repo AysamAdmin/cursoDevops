@@ -12,4 +12,4 @@ EXPOSE 3306
 
 
 # Comando por defecto para iniciar MySQL
-CMD ["mysqld"]
+#CMD ["mysqld"]
