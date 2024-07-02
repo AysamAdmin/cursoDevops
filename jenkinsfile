@@ -1,0 +1,74 @@
+///////////////////////////////////////////    PIN 1 - Grupo 12    /////////////////////////////////////////////////////////
+// El objetivo de este pipeline es: paso1: tomar la especificación de un docker desde repo publico de github (dockerFile) //
+//                                  paso2: Ver las imagenes registradas y construir nueva imagen de MySQL lts            //
+//                                  paso3: crear el contenedor e instanciar la Base de datos                             //
+//                                  paso4: Scannear el docker mostrando los parametros de la BD instanciada              //
+//                                  paso5: Remomeer Contendor e Imagen (manejo de excepcion de ejecución)                //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+pipeline {
+    agent any
+    environment {
+        GIT_REPO = 'https://github.com/AysamAdmin/cursoDevops.git' // Repo público Github - Grupo 12 
+        GIT_BRANCH = 'main' 
+    }
+    stages {
+        // Paso 1  - Integracion Github
+        stage('Clonar Repositorio') {
+            steps {
+                // Clonar el repositorio de GitHub
+                git branch: "${GIT_BRANCH}", url: "${GIT_REPO}"
+            }
+        }
+        // Paso 2 - Construir imagen BD msysql
+        stage('Construir Imagen Docker') {
+            steps {
+                script {
+                    // lista las imagenes registradas
+                    sh 'docker images'
+                    // Construir la imagen Docker
+                    sh 'docker build -t ${DOCKER_IMAGE} .'
+                }
+            }
+        }
+        // Paso 3 - Instanciar Docker con Instancia BD msysql
+        stage('Instanciar Contenedor MySQL') {
+            steps {
+                script {
+                    // Instanciar el contenedor MySQL
+                    sh 'docker run -d -p 3306:3306 --name ${CONTAINER_NAME} -e MYSQL_ROOT_PASSWORD=${DB_PASSWORD} -e MYSQL_DATABASE=${DB_NAME} -e MYSQL_USER=${DB_USER} -e MYSQL_PASSWORD=${DB_PASSWORD} ${DOCKER_IMAGE}'
+                    //
+                    // Esperar a que MySQL esté listo
+                    // Mientras el docker de Mysql este corriendo, se puede verificar con dbveaver el acceso a la base de datos
+                    // 
+                    sh 'sleep 60'
+                }
+            }
+        }
+        // Paso 4 - Verifica el acceso a la instancia BD Mysql
+        stage('Verificar Acceso a la Base de Datos') {
+            steps {
+                script {
+                    // Verificar el acceso a la base de datos
+                    sh 'docker exec -i ${CONTAINER_NAME} mysql -u ${DB_USER} -p${DB_PASSWORD} -e "SHOW DATABASES;"'
+                }
+            }
+        }
+    }
+    // Paso 5 - Paso obligatorio - remover docker e imagen
+    post {
+        always {
+            // Eliminar el contenedor y la imagen
+            script {
+                sh "echo 'remueve contenedor e imagen'"
+                sh 'docker rm -f ${CONTAINER_NAME}'
+                sh 'docker rmi ${DOCKER_IMAGE}'
+            }
+        }
+        success {
+                sh "echo 'Finalizo Correctamente'"
+        }
+        failure {
+                sh "echo 'Finalizo con Fallas'"
+        }
+    }
+}
