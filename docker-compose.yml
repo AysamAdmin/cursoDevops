@@ -1,0 +1,60 @@
+version: '3.9'
+services:
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_data:/prometheus
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - monitoring
+
+  httpd:
+    image: httpd
+    ports:
+     - "5000:80"
+    container_name: "httpd"
+    networks:
+     - monitoring
+
+  nginx:
+    image: nginx
+    ports:
+     - "5001:80"
+    container_name: "nginx"
+    networks:
+     - monitoring      
+
+  blackbox-exporter:
+   image: prom/blackbox-exporter
+   container_name: blackbox
+   restart: unless-stopped
+   ports:
+     - "9115:9115"
+   networks:
+     - monitoring     
+
+volumes:
+  mysql_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  monitoring:
+    driver: bridge
